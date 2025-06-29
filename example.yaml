@@ -62,7 +62,7 @@ esp32_ble_server:
 esp32_ble_irk:
   id: ble_irk
   auto_extract: true
-  clear_bonds_on_startup: false
+  clear_bonds_on_startup: true  # CRITICAL: Prevents 0x55 pairing errors
   on_pairing_started:
     - lambda: |-
         ESP_LOGI("irk", "Device started pairing: %s", address.c_str());

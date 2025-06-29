@@ -27,9 +27,16 @@ void ESP32BLEIrk::setup() {
   // Configure BLE security parameters to force pairing/bonding
   ESP_LOGD(TAG, "Configuring BLE security parameters");
   
+  // Set IO capability to NONE (critical for iOS pairing!)
+  esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;
+  esp_err_t ret = esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap, sizeof(uint8_t));
+  if (ret != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to set IO capability: %s", esp_err_to_name(ret));
+  }
+  
   // Set authentication requirements - force bonding with MITM protection
   esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_MITM_BOND;
-  esp_err_t ret = esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
+  ret = esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
   if (ret != ESP_OK) {
     ESP_LOGE(TAG, "Failed to set auth req mode: %s", esp_err_to_name(ret));
   }
