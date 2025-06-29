@@ -36,7 +36,7 @@ void ESP32BLEIrk::setup() {
   
   // Set authentication requirements - force bonding with MITM protection
   esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_MITM_BOND;
-  ret = esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
+  esp_err_t ret = esp_ble_gap_set_security_param(ESP_BLE_SM_AUTHEN_REQ_MODE, &auth_req, sizeof(uint8_t));
   if (ret != ESP_OK) {
     ESP_LOGE(TAG, "Failed to set auth req mode: %s", esp_err_to_name(ret));
   }
