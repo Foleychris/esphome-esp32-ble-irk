@@ -1,0 +1,142 @@
+# Example configuration for ESP32 BLE IRK Component
+# This shows how to use the external component to extract IRK keys
+
+substitutions:
+  device_name: "ble-irk-extractor"
+  friendly_name: "BLE IRK Extractor"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+
+esp32:
+  board: esp32dev
+
+# Enable logging
+logger:
+  level: DEBUG
+  logs:
+    esp32_ble_irk: DEBUG
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+# External components
+external_components:
+  # ESP32 BLE IRK component from this repository
+  - source: github://Foleychris/esphome-esp32-ble-irk
+    components: [ esp32_ble_irk ]
+
+# Configure Bluetooth LE
+esp32_ble:
+  id: my_ble
+  io_capability: none  # No input/output capability
+
+# Optional: Define a BLE server for device pairing (if you want devices to connect)
+esp32_ble_server:
+  manufacturer: "ESPHome IRK Extractor"
+  services:
+    # Heart Rate Service (example - devices can pair with this)
+    - uuid: 180D  
+      advertise: true
+      characteristics:
+        - uuid: 2A37  # Heart Rate Measurement
+          read: true
+          notify: true
+          value: [60, 0]  # Fake heart rate of 60 BPM
+        - uuid: 2A39  # Heart Rate Control Point
+          write: true
+          value: [1]
+
+# IRK extraction component
+esp32_ble_irk:
+  id: ble_irk
+  auto_extract: true
+  clear_bonds_on_startup: false
+  on_pairing_started:
+    - lambda: |-
+        ESP_LOGI("irk", "Device started pairing: %s", address.c_str());
+  on_pairing_complete:
+    - if:
+        condition:
+          lambda: 'return success;'
+        then:
+          - logger.log: "Pairing successful - IRK will be extracted!"
+          - homeassistant.event:
+              event: esphome.device_paired
+              data:
+                device: !lambda 'return address;'
+        else:
+          - logger.log: 
+              format: "Pairing failed: reason 0x%02X"
+              args: ['reason']
+  on_irk_extracted:
+    - lambda: |-
+        ESP_LOGI("irk", "IRK extracted for %d device(s)", device_count);
+    - homeassistant.event:
+        event: esphome.irk_extracted
+        data:
+          device_count: !lambda 'return device_count;'
+          irk_base64: !lambda 'return id(irk_base64).state;'
+          device_address: !lambda 'return id(device_addr).state;'
+  on_bond_cleared:
+    - logger.log: "All bonds cleared"
+    - homeassistant.event:
+        event: esphome.bonds_cleared
+
+# Text sensors to display IRK data
+text_sensor:
+  - platform: esp32_ble_irk
+    ble_irk_id: ble_irk
+    format: base64
+    name: "Device IRK (Base64)"
+    id: irk_base64
+    
+  - platform: esp32_ble_irk
+    ble_irk_id: ble_irk
+    format: reverse
+    name: "Device IRK (Reverse)"
+    id: irk_reverse
+    
+  - platform: esp32_ble_irk
+    ble_irk_id: ble_irk
+    format: hex
+    name: "Device IRK (Hex)"
+    id: irk_hex
+    
+  - platform: esp32_ble_irk
+    ble_irk_id: ble_irk
+    format: address
+    name: "Device Address"
+    id: device_addr
+
+# Control buttons
+button:
+  - platform: template
+    name: "Extract IRK"
+    icon: "mdi:key"
+    on_press:
+      - esp32_ble_irk.extract:
+          id: ble_irk
+          
+  - platform: template
+    name: "Clear Bonds"
+    icon: "mdi:delete"
+    on_press:
+      - esp32_ble_irk.clear_bonds:
+          id: ble_irk
+
+# Status indicators
+binary_sensor:
+  - platform: status
+    name: "Status"
