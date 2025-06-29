@@ -151,22 +151,6 @@ void ESP32BLEIrk::gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb
       esp_ble_passkey_reply(param->ble_security.ble_req.bd_addr, true, 123456);
       break;
     }
-
-    case ESP_GAP_BLE_KEY_EVT: {
-      ESP_LOGD(TAG, "BLE key event received - this contains the IRK!");
-      esp_ble_key_value_t *key = &param->ble_security.ble_key;
-      ESP_LOGD(TAG, "Key type: %d", key->key_type);
-      
-      if (key->key_type == ESP_LE_KEY_PID) {
-        ESP_LOGI(TAG, "Received Identity Root Key (IRK) from device");
-        // Extract IRK data after key exchange
-        if (this->auto_extract_) {
-          ESP_LOGD(TAG, "Auto-extracting IRK after key event");
-          this->extract_irk_data();
-        }
-      }
-      break;
-    }
     
     case ESP_GAP_BLE_AUTH_CMPL_EVT: {
       ESP_LOGD(TAG, "BLE authentication complete");
