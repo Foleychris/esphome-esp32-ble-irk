@@ -102,9 +102,11 @@ See [`example.yaml`](example.yaml) for a complete configuration showing all feat
 - Some devices don't use IRK - this is normal
 
 **Pairing issues?**
-- Try different `io_capability` settings in `esp32_ble`
-- Clear existing bonds if having connection problems
+- **CRITICAL**: If you see "Pairing failed, reason = 0x55", enable `clear_bonds_on_startup: true`
+- Try different `io_capability` settings in `esp32_ble` (recommend `none`)
+- Clear existing bonds if having connection problems  
 - Check device-specific pairing requirements
+- Stale bonds can cause 0x55 "Pairing Not Supported" errors
 
 ## 🤝 Contributing
 
