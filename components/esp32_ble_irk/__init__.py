@@ -7,6 +7,7 @@ from esphome.const import (
     CONF_ID,
     CONF_NAME,
     CONF_UPDATE_INTERVAL,
+    CONF_TRIGGER_ID,
     DEVICE_CLASS_EMPTY,
     STATE_CLASS_NONE,
 )
@@ -81,10 +82,26 @@ CONFIG_SCHEMA = cv.Schema(
         cv.GenerateID(esp32_ble.CONF_BLE_ID): cv.use_id(esp32_ble.ESP32BLE),
         cv.Optional(CONF_AUTO_EXTRACT, default=True): cv.boolean,
         cv.Optional(CONF_CLEAR_BONDS_ON_STARTUP, default=False): cv.boolean,
-        cv.Optional(CONF_ON_PAIRING_STARTED): automation.validate_automation(single=True),
-        cv.Optional(CONF_ON_PAIRING_COMPLETE): automation.validate_automation(single=True),
-        cv.Optional(CONF_ON_IRK_EXTRACTED): automation.validate_automation(single=True),
-        cv.Optional(CONF_ON_BOND_CLEARED): automation.validate_automation(single=True),
+        cv.Optional(CONF_ON_PAIRING_STARTED): automation.validate_automation(
+            {
+                cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ESP32BLEIrkPairingStartedTrigger),
+            }
+        ),
+        cv.Optional(CONF_ON_PAIRING_COMPLETE): automation.validate_automation(
+            {
+                cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ESP32BLEIrkPairingCompleteTrigger),
+            }
+        ),
+        cv.Optional(CONF_ON_IRK_EXTRACTED): automation.validate_automation(
+            {
+                cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ESP32BLEIrkExtractedTrigger),
+            }
+        ),
+        cv.Optional(CONF_ON_BOND_CLEARED): automation.validate_automation(
+            {
+                cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(ESP32BLEIrkBondClearedTrigger),
+            }
+        ),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -114,22 +131,22 @@ async def to_code(config):
     cg.add(var.set_auto_extract(config[CONF_AUTO_EXTRACT]))
     cg.add(var.set_clear_bonds_on_startup(config[CONF_CLEAR_BONDS_ON_STARTUP]))
     
-    # Register automation triggers (single=True means config is not a list)
-    if CONF_ON_PAIRING_STARTED in config:
-        trigger = cg.new_Pvariable(cg.declare_id(ESP32BLEIrkPairingStartedTrigger)(), var)
-        await automation.build_automation(trigger, [(cg.std_string, "address")], config[CONF_ON_PAIRING_STARTED])
+    # Register automation triggers (using proper ESPHome pattern)
+    for conf in config.get(CONF_ON_PAIRING_STARTED, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(trigger, [(cg.std_string, "address")], conf)
     
-    if CONF_ON_PAIRING_COMPLETE in config:
-        trigger = cg.new_Pvariable(cg.declare_id(ESP32BLEIrkPairingCompleteTrigger)(), var)
-        await automation.build_automation(trigger, [(cg.std_string, "address"), (cg.bool_, "success"), (cg.uint8, "reason")], config[CONF_ON_PAIRING_COMPLETE])
+    for conf in config.get(CONF_ON_PAIRING_COMPLETE, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(trigger, [(cg.std_string, "address"), (cg.bool_, "success"), (cg.uint8, "reason")], conf)
     
-    if CONF_ON_IRK_EXTRACTED in config:
-        trigger = cg.new_Pvariable(cg.declare_id(ESP32BLEIrkExtractedTrigger)(), var)
-        await automation.build_automation(trigger, [(cg.uint16, "device_count")], config[CONF_ON_IRK_EXTRACTED])
+    for conf in config.get(CONF_ON_IRK_EXTRACTED, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(trigger, [(cg.uint16, "device_count")], conf)
     
-    if CONF_ON_BOND_CLEARED in config:
-        trigger = cg.new_Pvariable(cg.declare_id(ESP32BLEIrkBondClearedTrigger)(), var)
-        await automation.build_automation(trigger, [], config[CONF_ON_BOND_CLEARED])
+    for conf in config.get(CONF_ON_BOND_CLEARED, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(trigger, [], conf)
     
     cg.add_define("USE_ESP32_BLE_IRK")
 
