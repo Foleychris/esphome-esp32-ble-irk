@@ -116,19 +116,19 @@ async def to_code(config):
     
     # Register automation triggers
     if CONF_ON_PAIRING_STARTED in config:
-        trigger = cg.new_Pvariable(cg.GenerateID(ESP32BLEIrkPairingStartedTrigger)(), var)
+        trigger = cg.new_Pvariable(ESP32BLEIrkPairingStartedTrigger, var)
         await automation.build_automation(trigger, [(cg.std_string, "address")], config[CONF_ON_PAIRING_STARTED])
     
     if CONF_ON_PAIRING_COMPLETE in config:
-        trigger = cg.new_Pvariable(cg.GenerateID(ESP32BLEIrkPairingCompleteTrigger)(), var)
+        trigger = cg.new_Pvariable(ESP32BLEIrkPairingCompleteTrigger, var)
         await automation.build_automation(trigger, [(cg.std_string, "address"), (cg.bool_, "success"), (cg.uint8, "reason")], config[CONF_ON_PAIRING_COMPLETE])
     
     if CONF_ON_IRK_EXTRACTED in config:
-        trigger = cg.new_Pvariable(cg.GenerateID(ESP32BLEIrkExtractedTrigger)(), var)
+        trigger = cg.new_Pvariable(ESP32BLEIrkExtractedTrigger, var)
         await automation.build_automation(trigger, [(cg.uint16, "device_count")], config[CONF_ON_IRK_EXTRACTED])
     
     if CONF_ON_BOND_CLEARED in config:
-        trigger = cg.new_Pvariable(cg.GenerateID(ESP32BLEIrkBondClearedTrigger)(), var)
+        trigger = cg.new_Pvariable(ESP32BLEIrkBondClearedTrigger, var)
         await automation.build_automation(trigger, [], config[CONF_ON_BOND_CLEARED])
     
     cg.add_define("USE_ESP32_BLE_IRK")
