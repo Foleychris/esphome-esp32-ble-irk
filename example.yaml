@@ -40,23 +40,40 @@ external_components:
 # Configure Bluetooth LE
 esp32_ble:
   id: my_ble
-  io_capability: none  # No input/output capability
+  io_capability: keyboard_only  # Critical: matches working implementations
 
-# Optional: Define a BLE server for device pairing (if you want devices to connect)
+# BLE server for device pairing - optimized for iOS visibility
 esp32_ble_server:
   manufacturer: "ESPHome IRK Extractor"
+  # Set appearance to Heart Rate Sensor - iOS recognizes this device type
+  appearance: 0x0341
+  # Add manufacturer data for better iOS visibility
+  manufacturer_data: [0xFF, 0xFF, 0x01, 0x02]
   services:
-    # Heart Rate Service (example - devices can pair with this)
+    # Heart Rate Service (0x180D) - iOS expects this for pairing
     - uuid: 180D  
       advertise: true
       characteristics:
         - uuid: 2A37  # Heart Rate Measurement
           read: true
           notify: true
-          value: [60, 0]  # Fake heart rate of 60 BPM
+          value: [0x06, 0x3C]  # Flags + 60 BPM (matches working implementations)
         - uuid: 2A39  # Heart Rate Control Point
           write: true
           value: [1]
+    
+    # Device Information Service (0x180A) - CRITICAL for iOS
+    - uuid: 180A
+      characteristics:
+        - uuid: 2A29  # Manufacturer Name
+          read: true
+          value: "ESPHome"
+        - uuid: 2A24  # Model Number  
+          read: true
+          value: "IRK Extractor"
+        - uuid: 2A01  # Appearance
+          read: true
+          value: [0x41, 0x03]  # Heart Rate Sensor appearance
 
 # IRK extraction component
 esp32_ble_irk:

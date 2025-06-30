@@ -27,12 +27,8 @@ void ESP32BLEIrk::setup() {
   // Configure BLE security parameters to force pairing/bonding
   ESP_LOGD(TAG, "Configuring BLE security parameters");
   
-  // Set IO capability to NONE (critical for iOS pairing!)
-  /*esp_ble_io_cap_t iocap = ESP_IO_CAP_NONE;
-  esp_err_t ret = esp_ble_gap_set_security_param(ESP_BLE_SM_IOCAP_MODE, &iocap, sizeof(uint8_t));
-  if (ret != ESP_OK) {
-    ESP_LOGE(TAG, "Failed to set IO capability: %s", esp_err_to_name(ret));
-  } */
+  // NOTE: IO capability is set via esp32_ble YAML configuration, not here
+  // This prevents conflicts between YAML and programmatic settings
   
   // Set authentication requirements - force bonding with MITM protection
   esp_ble_auth_req_t auth_req = ESP_LE_AUTH_REQ_SC_MITM_BOND;
@@ -93,6 +89,30 @@ void ESP32BLEIrk::dump_config() {
 
 float ESP32BLEIrk::get_setup_priority() const {
   return setup_priority::AFTER_BLUETOOTH;
+}
+
+void ESP32BLEIrk::loop() {
+  // Poll for bonded devices every 500ms (like working implementations)
+  static unsigned long last_poll = 0;
+  unsigned long now = millis();
+  
+  if (now - last_poll > 500) {
+    last_poll = now;
+    
+    // Check for new bonded devices (like esphome-irk-enrollment)
+    int current_dev_num = esp_ble_get_bond_device_num();
+    static int last_dev_num = -1;
+    
+    if (current_dev_num != last_dev_num) {
+      ESP_LOGD(TAG, "Bond count changed: %d -> %d", last_dev_num, current_dev_num);
+      last_dev_num = current_dev_num;
+      
+      if (current_dev_num > 0 && this->auto_extract_) {
+        ESP_LOGD(TAG, "New bonds detected, extracting IRK data");
+        this->extract_irk_data();
+      }
+    }
+  }
 }
 
 void ESP32BLEIrk::gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param) {
@@ -195,15 +215,14 @@ void ESP32BLEIrk::gap_event_handler(esp_gap_ble_cb_event_t event, esp_ble_gap_cb
 void ESP32BLEIrk::extract_irk_data() {
   ESP_LOGD(TAG, "Extracting IRK data from bonded devices");
   
-  // Clear existing device info
-  this->device_info_.clear();
-  
   // Get number of bonded devices
   int dev_num = esp_ble_get_bond_device_num();
   ESP_LOGD(TAG, "Number of bonded devices: %d", dev_num);
   
   if (dev_num == 0) {
     ESP_LOGD(TAG, "No bonded devices found");
+    // Clear existing device info and update sensors
+    this->device_info_.clear();
     this->update_text_sensors();
     return;
   }
@@ -225,9 +244,17 @@ void ESP32BLEIrk::extract_irk_data() {
   
   ESP_LOGI(TAG, "Found %d bonded device(s)", dev_num);
   
-  // Process each bonded device
+  // Clear existing device info
+  this->device_info_.clear();
+  
+  // Process each bonded device (like working implementations)
   for (int i = 0; i < dev_num; i++) {
     DeviceIrkInfo device_info;
+    
+    ESP_LOGI(TAG, "Processing bonded device %d:", i + 1);
+    ESP_LOGI(TAG, "  BD_ADDR: %02X:%02X:%02X:%02X:%02X:%02X",
+             dev_list[i].bd_addr[0], dev_list[i].bd_addr[1], dev_list[i].bd_addr[2],
+             dev_list[i].bd_addr[3], dev_list[i].bd_addr[4], dev_list[i].bd_addr[5]);
     
     // Copy device address
     memcpy(device_info.bd_addr, dev_list[i].bd_addr, sizeof(esp_bd_addr_t));
@@ -242,13 +269,16 @@ void ESP32BLEIrk::extract_irk_data() {
     device_info.irk_reverse = this->format_irk_reverse(device_info.irk);
     
     // Log IRK information
-    ESP_LOGI(TAG, "Device %d:", i + 1);
-    ESP_LOGI(TAG, "  Address: %s", device_info.address_str.c_str());
     ESP_LOGI(TAG, "  IRK (hex): %s", device_info.irk_hex.c_str());
     ESP_LOGI(TAG, "  IRK (base64): %s", device_info.irk_base64.c_str());
     ESP_LOGI(TAG, "  IRK (reverse): %s", device_info.irk_reverse.c_str());
     
     this->device_info_.push_back(device_info);
+    
+    // CRITICAL: Disconnect and remove bond immediately (like working implementations)
+    ESP_LOGI(TAG, "  Disconnecting and removing bond (following working implementation pattern)");
+    esp_ble_gap_disconnect(dev_list[i].bd_addr);
+    esp_ble_remove_bond_device(dev_list[i].bd_addr);
   }
   
   // Clean up
