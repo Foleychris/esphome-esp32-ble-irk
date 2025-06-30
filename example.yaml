@@ -92,7 +92,7 @@ esp32_ble_irk:
           - homeassistant.event:
               event: esphome.device_paired
               data:
-                device: !lambda 'return address;'
+                device: !lambda 'return address.c_str();'
         else:
           - logger.log: 
               format: "Pairing failed: reason 0x%02X"
@@ -104,8 +104,8 @@ esp32_ble_irk:
         event: esphome.irk_extracted
         data:
           device_count: !lambda 'return device_count;'
-          irk_base64: !lambda 'return id(irk_base64).state;'
-          device_address: !lambda 'return id(device_addr).state;'
+          irk_base64: !lambda 'return id(irk_base64).state.c_str();'
+          device_address: !lambda 'return id(device_addr).state.c_str();'
   on_bond_cleared:
     - logger.log: "All bonds cleared"
     - homeassistant.event:
